@@ -3,15 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的精品选品店</title>
+    <title>TK 精选超市</title>
     <style>
-        /* 保持之前的样式不变 */
         body { font-family: -apple-system, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; }
+        /* 💡 默认隐藏调价面板 */
+        #adminPanel { display: none; background: #333; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; max-width: 500px; margin: 0 auto 20px; }
+        .input-row { display: flex; gap: 10px; margin-top: 10px; }
+        .input-group { flex: 1; font-size: 12px; }
+        input { width: 100%; padding: 8px; border-radius: 5px; border: none; }
+        
         .category-bar { display: flex; overflow-x: auto; white-space: nowrap; padding: 10px 0; margin-bottom: 20px; gap: 10px; }
         .cat-item { padding: 8px 18px; background: white; border-radius: 20px; font-size: 14px; border: 1px solid #ddd; cursor: pointer; }
         .cat-item.active { background: #ff4400; color: white; border-color: #ff4400; font-weight: bold; }
         .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 600px; margin: 0 auto; }
-        .product-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; }
+        .product-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .product-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
         .product-info { padding: 10px; }
         .product-title { font-size: 13px; color: #333; margin-bottom: 5px; height: 36px; overflow: hidden; }
@@ -24,9 +29,22 @@
 </head>
 <body>
 
-    <h2 style="text-align:center; color:#333;">✨ 我的精品超市</h2>
+    <div id="adminPanel">
+        <strong>🤫 店主暗号已激活 (实时调价)</strong>
+        <div class="input-row">
+            <div class="input-group">
+                <label>汇率</label>
+                <input type="number" id="exRate" value="0.65" step="0.01" oninput="updatePrices()">
+            </div>
+            <div class="input-group">
+                <label>加价(RM)</label>
+                <input type="number" id="profit" value="10" oninput="updatePrices()">
+            </div>
+        </div>
+    </div>
+
     <div class="category-bar" id="catBar"></div>
-    <div id="gallery" class="product-grid">正在加载商品数据...</div>
+    <div id="gallery" class="product-grid">同步中...</div>
 
     <div class="modal-overlay" id="modalOverlay" onclick="this.style.display='none'">
         <div class="modal-content" onclick="event.stopPropagation()">
@@ -41,24 +59,31 @@
     </div>
 
     <script>
-        // 💡 这里的名字必须和你上传到 GitHub 的 CSV 文件名一模一样！
         const CSV_FILE = 'myshop.csv'; 
-        let allProducts = [];
+        let rawData = ""; 
+        let currentProducts = [];
 
-        // 🚀 网页加载时自动运行
+        // 🚀 核心逻辑：检查网址里有没有 ?boss
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('boss')) {
+            document.getElementById('adminPanel').style.display = 'block';
+        }
+
         window.onload = async function() {
             try {
                 const response = await fetch(CSV_FILE);
-                const text = await response.text();
-                parseAndShow(text);
+                rawData = await response.text();
+                updatePrices(); 
             } catch (err) {
-                document.getElementById('gallery').innerText = "加载失败，请确认 CSV 文件已上传到 GitHub。";
+                document.getElementById('gallery').innerText = "加载失败，请检查 CSV。";
             }
         };
 
-        function parseAndShow(text) {
-            const lines = text.split(/\r?\n/);
-            allProducts = [];
+        function updatePrices() {
+            const rate = parseFloat(document.getElementById('exRate').value) || 0.65;
+            const profit = parseFloat(document.getElementById('profit').value) || 0;
+            const lines = rawData.split(/\r?\n/);
+            currentProducts = [];
             const categories = new Set(["全部"]);
 
             for (let i = 1; i < lines.length; i++) {
@@ -66,37 +91,38 @@
                 if (!line) continue;
                 const parts = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
                 if (parts && parts.length >= 3) {
-                    const price = parseFloat(parts[1].replace(/"/g, "").replace(/[¥,]/g, "")) || 0;
-                    const product = {
+                    const rmb = parseFloat(parts[1].replace(/"/g, "").replace(/[¥,]/g, "")) || 0;
+                    const p = {
                         title: parts[0].replace(/"/g, ""),
-                        priceMYR: (price * 0.65) + 10, // 这里可以修改你的默认加价逻辑
+                        priceMYR: (rmb * rate) + profit,
                         img: parts[2].replace(/"/g, ""),
                         cat: (parts[3] ? parts[3].replace(/"/g, "") : "其他").trim(),
                         desc: (parts[4] ? parts[4].replace(/"/g, "") : "暂无详情")
                     };
-                    allProducts.push(product);
-                    categories.add(product.cat);
+                    currentProducts.push(p);
+                    categories.add(p.cat);
                 }
             }
             renderCats(Array.from(categories));
-            renderProducts(allProducts);
+            renderProducts(currentProducts);
         }
 
         function renderCats(cats) {
             const bar = document.getElementById('catBar');
-            bar.innerHTML = cats.map(c => `<div class="cat-item ${c==='全部'?'active':''}" onclick="filterData('${c}', this)">${c}</div>`).join('');
+            bar.innerHTML = cats.map(c => `<div class="cat-item" onclick="filterData('${c}', this)">${c}</div>`).join('');
+            if(bar.firstChild) bar.firstChild.classList.add('active');
         }
 
         function filterData(cat, el) {
             document.querySelectorAll('.cat-item').forEach(i => i.classList.remove('active'));
             el.classList.add('active');
-            renderProducts(cat === '全部' ? allProducts : allProducts.filter(p => p.cat === cat));
+            renderProducts(cat === '全部' ? currentProducts : currentProducts.filter(p => p.cat === cat));
         }
 
         function renderProducts(list) {
             const gallery = document.getElementById('gallery');
             gallery.innerHTML = list.map((p, idx) => `
-                <div class="product-card" onclick="showPop(${allProducts.indexOf(p)})">
+                <div class="product-card" onclick="showPop(${currentProducts.indexOf(p)})">
                     <img src="${p.img}" class="product-img">
                     <div class="product-info">
                         <div class="product-title">${p.title}</div>
@@ -107,7 +133,7 @@
         }
 
         function showPop(idx) {
-            const p = allProducts[idx];
+            const p = currentProducts[idx];
             document.getElementById('modalImg').src = p.img;
             document.getElementById('modalTitle').innerText = p.title;
             document.getElementById('modalPrice').innerText = `RM ${p.priceMYR.toFixed(2)}`;
