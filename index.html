@@ -3,39 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TK Global Shop</title>
+    <title>TK Global Select</title>
     <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background-color: #f8f9fa; margin: 0; padding: 15px; }
-        /* 隐藏 Google 默认的丑框 */
         .goog-te-banner-frame.skiptranslate { display: none !important; }
         body { top: 0px !important; }
         
         /* 翻译选择器样式 */
         #google_translate_element { margin-bottom: 15px; text-align: center; }
         
-        .flash-sale { background: linear-gradient(90deg, #ff4400, #ff8800); color: white; padding: 12px; border-radius: 12px; margin-bottom: 20px; text-align: center; }
+        /* 店主暗号面板样式 */
+        #adminPanel { display: none; background: #222; color: #fbff00; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 13px; }
+        .input-row { display: flex; gap: 10px; margin-top: 10px; }
+        input { width: 100%; padding: 8px; border-radius: 5px; border: none; }
+
+        /* 秒杀条 */
+        .flash-sale { background: linear-gradient(90deg, #ff4400, #ff8800); color: white; padding: 12px; border-radius: 12px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 10px rgba(255,68,0,0.2); }
+        
+        /* 分类栏样式 */
+        .category-bar { display: flex; overflow-x: auto; white-space: nowrap; padding: 5px 0; margin-bottom: 15px; gap: 8px; }
+        .cat-item { padding: 6px 16px; background: white; border-radius: 18px; font-size: 13px; border: 1px solid #eee; cursor: pointer; }
+        .cat-item.active { background: #ff4400; color: white; border-color: #ff4400; font-weight: bold; }
+
+        /* 商品布局 */
         .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         .product-card { background: white; border-radius: 12px; overflow: hidden; position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .badge { position: absolute; top: 8px; left: 8px; background: rgba(255, 217, 0, 0.9); color: #856404; padding: 2px 6px; border-radius: 5px; font-size: 10px; font-weight: bold; z-index: 5; }
         .product-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
         .product-info { padding: 10px; }
-        .myr-price { color: #ff4400; font-weight: bold; font-size: 17px; }
-        .wa-btn { display: block; background: #25D366; color: white; text-align: center; padding: 12px; border-radius: 10px; text-decoration: none; font-weight: bold; margin-top: 10px; }
+        .myr-price { color: #ff4400; font-weight: bold; font-size: 17px; margin: 5px 0; }
+        .wa-btn { display: block; background: #25D366; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px; }
     </style>
 </head>
 <body>
 
+    <div id="adminPanel">
+        <strong>🤫 Boss Mode (Real-time Price Control)</strong>
+        <div class="input-row">
+            <div class="input-group"><label>Rate</label><input type="number" id="exRate" value="0.65" step="0.01" oninput="updatePrices()"></div>
+            <div class="input-group"><label>Profit(RM)</label><input type="number" id="profit" value="10" oninput="updatePrices()"></div>
+        </div>
+    </div>
+
     <div id="google_translate_element"></div>
 
     <div class="flash-sale">
-        <div style="font-size: 12px;">🔥 限时秒杀倒计时 / Flash Sale Countdown:</div>
+        <div style="font-size: 12px; margin-bottom:3px;">🔥 限时秒杀倒计时 / FLASH SALE:</div>
         <div id="timer" style="font-weight:bold; font-size:18px;">02:45:00</div>
     </div>
+
+    <div class="category-bar" id="catBar"></div>
 
     <div id="gallery" class="product-grid">同步数据中...</div>
 
     <script>
-        // 初始化 Google 翻译
+        // Google 翻译初始化
         function googleTranslateElementInit() {
             new google.translate.TranslateElement({
                 pageLanguage: 'zh-CN',
@@ -45,46 +68,72 @@
         }
 
         const CSV_FILE = 'myshop.csv'; 
-        let allProducts = [];
+        let rawData = ""; 
+        let currentProducts = [];
+
+        // 检查暗号
+        if (new URLSearchParams(window.location.search).has('boss')) {
+            document.getElementById('adminPanel').style.display = 'block';
+        }
 
         window.onload = async function() {
             startTimer();
             try {
                 const response = await fetch(CSV_FILE);
-                const text = await response.text();
-                parseData(text);
-            } catch (err) { console.error("CSV Load Error"); }
+                rawData = await response.text();
+                updatePrices(); 
+            } catch (err) { document.getElementById('gallery').innerText = "Gagal memuatkan data."; }
         };
 
-        function parseData(text) {
-            const lines = text.split(/\r?\n/);
-            allProducts = [];
+        function updatePrices() {
+            const rate = parseFloat(document.getElementById('exRate').value) || 0.65;
+            const profit = parseFloat(document.getElementById('profit').value) || 0;
+            const lines = rawData.split(/\r?\n/);
+            currentProducts = [];
+            const categories = new Set(["全部"]);
+
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
                 const parts = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
                 if (parts && parts.length >= 3) {
                     const rmb = parseFloat(parts[1].replace(/"/g, "").replace(/[¥,]/g, "")) || 0;
-                    allProducts.push({
+                    currentProducts.push({
                         title: parts[0].replace(/"/g, ""),
-                        price: (rmb * 0.65) + 10,
+                        price: (rmb * rate) + profit,
                         img: parts[2].replace(/"/g, ""),
+                        cat: (parts[3] ? parts[3].replace(/"/g, "") : "其他").trim(),
                         desc: (parts[4] ? parts[4].replace(/"/g, "") : "")
                     });
+                    categories.add((parts[3] ? parts[3].replace(/"/g, "") : "其他").trim());
                 }
             }
-            render();
+            renderCats(Array.from(categories));
+            render(currentProducts);
         }
 
-        function render() {
+        function renderCats(cats) {
+            const bar = document.getElementById('catBar');
+            bar.innerHTML = cats.map(c => `<div class="cat-item ${c==='全部'?'active':''}" onclick="filterData('${c}', this)">${c}</div>`).join('');
+        }
+
+        function filterData(cat, el) {
+            document.querySelectorAll('.cat-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            const filtered = cat === '全部' ? currentProducts : currentProducts.filter(p => p.cat === cat);
+            render(filtered);
+        }
+
+        function render(list) {
             const gallery = document.getElementById('gallery');
-            gallery.innerHTML = allProducts.map((p, idx) => `
+            gallery.innerHTML = list.map((p, idx) => `
                 <div class="product-card">
+                    ${idx < 2 ? `<div class="badge">TOP ${idx+1}</div>` : ''}
                     <img src="${p.img}" class="product-img">
                     <div class="product-info">
-                        <div style="font-size:13px; height:36px; overflow:hidden;">${p.title}</div>
+                        <div style="font-size:13px; height:36px; overflow:hidden; line-height:1.4;">${p.title}</div>
                         <div class="myr-price">RM ${p.price.toFixed(2)}</div>
-                        <div style="font-size:11px; color:#999; margin:5px 0;">${p.desc}</div>
+                        <div style="font-size:11px; color:#888; margin-bottom:8px; height:15px; overflow:hidden;">${p.desc}</div>
                         <a href="https://wa.me/601116008366?text=Order:${encodeURIComponent(p.title)}" class="wa-btn">WhatsApp 下单</a>
                     </div>
                 </div>
