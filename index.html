@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TK 精选超市 / TK Select Shop</title>
+    <title>TK Select Shop / TK 精选超市</title>
     <style>
         body { font-family: -apple-system, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; }
         /* 隐藏调价面板 */
@@ -13,8 +13,9 @@
         input { width: 100%; padding: 8px; border-radius: 5px; border: none; }
         
         /* 语言切换按钮样式 */
-        .lang-switch { text-align: right; margin-bottom: 15px; }
-        .lang-btn { background: white; border: 1px solid #ddd; padding: 5px 12px; border-radius: 15px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .lang-switch { text-align: center; margin-bottom: 20px; display: flex; justify-content: center; gap: 8px; }
+        .lang-btn { background: white; border: 1px solid #ddd; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 12px; transition: 0.3s; }
+        .lang-btn.active { background: #333; color: white; border-color: #333; }
 
         .category-bar { display: flex; overflow-x: auto; white-space: nowrap; padding: 10px 0; margin-bottom: 20px; gap: 10px; }
         .cat-item { padding: 8px 18px; background: white; border-radius: 20px; font-size: 14px; border: 1px solid #ddd; cursor: pointer; }
@@ -44,13 +45,15 @@
     </div>
 
     <div class="lang-switch">
-        <button class="lang-btn" id="toggleLang" onclick="toggleLanguage()">Bahasa Melayu / 中文</button>
+        <button class="lang-btn active" onclick="setLanguage('zh', this)">中文</button>
+        <button class="lang-btn" onclick="setLanguage('en', this)">English</button>
+        <button class="lang-btn" onclick="setLanguage('ms', this)">Melayu</button>
     </div>
 
     <h2 id="pageTitle" style="text-align:center; color:#333; margin-top:0;">TK 精选超市</h2>
     
     <div class="category-bar" id="catBar"></div>
-    <div id="gallery" class="product-grid">Memuatkan... / 加载中...</div>
+    <div id="gallery" class="product-grid">Loading...</div>
 
     <div class="modal-overlay" id="modalOverlay" onclick="this.style.display='none'">
         <div class="modal-content" onclick="event.stopPropagation()">
@@ -59,7 +62,7 @@
                 <div id="modalTitle" style="font-weight:bold; margin-bottom:10px;"></div>
                 <div id="modalPrice" style="color:#ff4400; font-size:22px; font-weight:bold; margin-bottom:10px;"></div>
                 <div id="modalDesc" style="font-size:14px; color:#666; margin-bottom:20px;"></div>
-                <a href="" id="modalWaBtn" target="_blank" class="wa-btn">📲 WhatsApp 立即下单</a>
+                <a href="" id="modalWaBtn" target="_blank" class="wa-btn">📲 WhatsApp Order</a>
             </div>
         </div>
     </div>
@@ -68,12 +71,13 @@
         const CSV_FILE = 'myshop.csv'; 
         let rawData = ""; 
         let currentProducts = [];
-        let currentLang = 'zh'; // 默认中文
+        let currentLang = 'zh'; 
 
-        // 字典：翻译文本
+        // 三语字典
         const i18n = {
             zh: { title: "TK 精选超市", all: "全部", order: "📲 WhatsApp 立即下单", loading: "加载中...", waMsg: "Hi Boss, 我要下单: " },
-            ms: { title: "TK Kedai Pilihan", all: "Semua", order: "📲 Pesan Sekarang di WhatsApp", loading: "Memuatkan数据...", waMsg: "Hi Boss, saya nak order: " }
+            en: { title: "TK Select Shop", all: "All", order: "📲 Order via WhatsApp", loading: "Loading...", waMsg: "Hi Boss, I would like to order: " },
+            ms: { title: "TK Kedai Pilihan", all: "Semua", order: "📲 Pesan melalui WhatsApp", loading: "Memuatkan...", waMsg: "Hi Boss, saya nak order: " }
         };
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -85,18 +89,20 @@
                 rawData = await response.text();
                 updatePrices(); 
             } catch (err) {
-                document.getElementById('gallery').innerText = "Gagal memuatkan data.";
+                document.getElementById('gallery').innerText = "Load failed.";
             }
         };
 
-        function toggleLanguage() {
-            currentLang = currentLang === 'zh' ? 'ms' : 'zh';
+        function setLanguage(lang, el) {
+            currentLang = lang;
+            document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+            el.classList.add('active');
             updateUI();
         }
 
         function updateUI() {
             document.getElementById('pageTitle').innerText = i18n[currentLang].title;
-            updatePrices(); // 重新渲染分类栏和商品
+            updatePrices(); 
         }
 
         function updatePrices() {
@@ -112,15 +118,14 @@
                 const parts = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
                 if (parts && parts.length >= 3) {
                     const rmb = parseFloat(parts[1].replace(/"/g, "").replace(/[¥,]/g, "")) || 0;
-                    // 💡 注意：商品标题和详情依然来自 CSV（中文），我们可以保持原样，或你在 CSV 里写双语
                     currentProducts.push({
                         title: parts[0].replace(/"/g, ""),
                         priceMYR: (rmb * rate) + profit,
                         img: parts[2].replace(/"/g, ""),
-                        cat: (parts[3] ? parts[3].replace(/"/g, "") : "Lain").trim(),
-                        desc: (parts[4] ? parts[4].replace(/"/g, "") : "Tiada Info")
+                        cat: (parts[3] ? parts[3].replace(/"/g, "") : "Other").trim(),
+                        desc: (parts[4] ? parts[4].replace(/"/g, "") : "No details")
                     });
-                    categories.add((parts[3] ? parts[3].replace(/"/g, "") : "Lain").trim());
+                    categories.add((parts[3] ? parts[3].replace(/"/g, "") : "Other").trim());
                 }
             }
             renderCats(Array.from(categories));
@@ -135,7 +140,7 @@
         function filterData(cat, el) {
             document.querySelectorAll('.cat-item').forEach(i => i.classList.remove('active'));
             el.classList.add('active');
-            const filtered = (cat === '全部' || cat === 'Semua') ? currentProducts : currentProducts.filter(p => p.cat === cat);
+            const filtered = (cat === i18n[currentLang].all) ? currentProducts : currentProducts.filter(p => p.cat === cat);
             renderProducts(filtered);
         }
 
