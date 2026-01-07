@@ -3,24 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TK 精选超市</title>
+    <title>TK 精选超市 / TK Select Shop</title>
     <style>
         body { font-family: -apple-system, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; }
-        /* 💡 默认隐藏调价面板 */
+        /* 隐藏调价面板 */
         #adminPanel { display: none; background: #333; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; max-width: 500px; margin: 0 auto 20px; }
         .input-row { display: flex; gap: 10px; margin-top: 10px; }
         .input-group { flex: 1; font-size: 12px; }
         input { width: 100%; padding: 8px; border-radius: 5px; border: none; }
         
+        /* 语言切换按钮样式 */
+        .lang-switch { text-align: right; margin-bottom: 15px; }
+        .lang-btn { background: white; border: 1px solid #ddd; padding: 5px 12px; border-radius: 15px; cursor: pointer; font-size: 13px; font-weight: bold; }
+
         .category-bar { display: flex; overflow-x: auto; white-space: nowrap; padding: 10px 0; margin-bottom: 20px; gap: 10px; }
         .cat-item { padding: 8px 18px; background: white; border-radius: 20px; font-size: 14px; border: 1px solid #ddd; cursor: pointer; }
         .cat-item.active { background: #ff4400; color: white; border-color: #ff4400; font-weight: bold; }
+        
         .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 600px; margin: 0 auto; }
         .product-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .product-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
         .product-info { padding: 10px; }
         .product-title { font-size: 13px; color: #333; margin-bottom: 5px; height: 36px; overflow: hidden; }
         .myr-price { color: #ff4400; font-weight: bold; font-size: 18px; }
+
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; width: 90%; max-width: 400px; border-radius: 20px; overflow: hidden; }
         .modal-body { padding: 20px; }
@@ -30,21 +36,21 @@
 <body>
 
     <div id="adminPanel">
-        <strong>🤫 店主暗号已激活 (实时调价)</strong>
+        <strong>🤫 Boss Mode (Real-time Price)</strong>
         <div class="input-row">
-            <div class="input-group">
-                <label>汇率</label>
-                <input type="number" id="exRate" value="0.65" step="0.01" oninput="updatePrices()">
-            </div>
-            <div class="input-group">
-                <label>加价(RM)</label>
-                <input type="number" id="profit" value="10" oninput="updatePrices()">
-            </div>
+            <div class="input-group"><label>Rate</label><input type="number" id="exRate" value="0.65" step="0.01" oninput="updatePrices()"></div>
+            <div class="input-group"><label>Profit(RM)</label><input type="number" id="profit" value="10" oninput="updatePrices()"></div>
         </div>
     </div>
 
+    <div class="lang-switch">
+        <button class="lang-btn" id="toggleLang" onclick="toggleLanguage()">Bahasa Melayu / 中文</button>
+    </div>
+
+    <h2 id="pageTitle" style="text-align:center; color:#333; margin-top:0;">TK 精选超市</h2>
+    
     <div class="category-bar" id="catBar"></div>
-    <div id="gallery" class="product-grid">同步中...</div>
+    <div id="gallery" class="product-grid">Memuatkan... / 加载中...</div>
 
     <div class="modal-overlay" id="modalOverlay" onclick="this.style.display='none'">
         <div class="modal-content" onclick="event.stopPropagation()">
@@ -62,12 +68,16 @@
         const CSV_FILE = 'myshop.csv'; 
         let rawData = ""; 
         let currentProducts = [];
+        let currentLang = 'zh'; // 默认中文
 
-        // 🚀 核心逻辑：检查网址里有没有 ?boss
+        // 字典：翻译文本
+        const i18n = {
+            zh: { title: "TK 精选超市", all: "全部", order: "📲 WhatsApp 立即下单", loading: "加载中...", waMsg: "Hi Boss, 我要下单: " },
+            ms: { title: "TK Kedai Pilihan", all: "Semua", order: "📲 Pesan Sekarang di WhatsApp", loading: "Memuatkan数据...", waMsg: "Hi Boss, saya nak order: " }
+        };
+
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('boss')) {
-            document.getElementById('adminPanel').style.display = 'block';
-        }
+        if (urlParams.has('boss')) document.getElementById('adminPanel').style.display = 'block';
 
         window.onload = async function() {
             try {
@@ -75,16 +85,26 @@
                 rawData = await response.text();
                 updatePrices(); 
             } catch (err) {
-                document.getElementById('gallery').innerText = "加载失败，请检查 CSV。";
+                document.getElementById('gallery').innerText = "Gagal memuatkan data.";
             }
         };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'zh' ? 'ms' : 'zh';
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('pageTitle').innerText = i18n[currentLang].title;
+            updatePrices(); // 重新渲染分类栏和商品
+        }
 
         function updatePrices() {
             const rate = parseFloat(document.getElementById('exRate').value) || 0.65;
             const profit = parseFloat(document.getElementById('profit').value) || 0;
             const lines = rawData.split(/\r?\n/);
             currentProducts = [];
-            const categories = new Set(["全部"]);
+            const categories = new Set([i18n[currentLang].all]);
 
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
@@ -92,15 +112,15 @@
                 const parts = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
                 if (parts && parts.length >= 3) {
                     const rmb = parseFloat(parts[1].replace(/"/g, "").replace(/[¥,]/g, "")) || 0;
-                    const p = {
+                    // 💡 注意：商品标题和详情依然来自 CSV（中文），我们可以保持原样，或你在 CSV 里写双语
+                    currentProducts.push({
                         title: parts[0].replace(/"/g, ""),
                         priceMYR: (rmb * rate) + profit,
                         img: parts[2].replace(/"/g, ""),
-                        cat: (parts[3] ? parts[3].replace(/"/g, "") : "其他").trim(),
-                        desc: (parts[4] ? parts[4].replace(/"/g, "") : "暂无详情")
-                    };
-                    currentProducts.push(p);
-                    categories.add(p.cat);
+                        cat: (parts[3] ? parts[3].replace(/"/g, "") : "Lain").trim(),
+                        desc: (parts[4] ? parts[4].replace(/"/g, "") : "Tiada Info")
+                    });
+                    categories.add((parts[3] ? parts[3].replace(/"/g, "") : "Lain").trim());
                 }
             }
             renderCats(Array.from(categories));
@@ -109,19 +129,19 @@
 
         function renderCats(cats) {
             const bar = document.getElementById('catBar');
-            bar.innerHTML = cats.map(c => `<div class="cat-item" onclick="filterData('${c}', this)">${c}</div>`).join('');
-            if(bar.firstChild) bar.firstChild.classList.add('active');
+            bar.innerHTML = cats.map(c => `<div class="cat-item ${c===i18n[currentLang].all?'active':''}" onclick="filterData('${c}', this)">${c}</div>`).join('');
         }
 
         function filterData(cat, el) {
             document.querySelectorAll('.cat-item').forEach(i => i.classList.remove('active'));
             el.classList.add('active');
-            renderProducts(cat === '全部' ? currentProducts : currentProducts.filter(p => p.cat === cat));
+            const filtered = (cat === '全部' || cat === 'Semua') ? currentProducts : currentProducts.filter(p => p.cat === cat);
+            renderProducts(filtered);
         }
 
         function renderProducts(list) {
             const gallery = document.getElementById('gallery');
-            gallery.innerHTML = list.map((p, idx) => `
+            gallery.innerHTML = list.map((p) => `
                 <div class="product-card" onclick="showPop(${currentProducts.indexOf(p)})">
                     <img src="${p.img}" class="product-img">
                     <div class="product-info">
@@ -138,8 +158,12 @@
             document.getElementById('modalTitle').innerText = p.title;
             document.getElementById('modalPrice').innerText = `RM ${p.priceMYR.toFixed(2)}`;
             document.getElementById('modalDesc').innerText = p.desc;
-            const msg = encodeURIComponent(`Hi Boss, 我要下单: ${p.title}\n价格: RM ${p.priceMYR.toFixed(2)}`);
-            document.getElementById('modalWaBtn').href = `https://wa.me/601116008366?text=${msg}`;
+            
+            const btn = document.getElementById('modalWaBtn');
+            btn.innerText = i18n[currentLang].order;
+            const msg = encodeURIComponent(`${i18n[currentLang].waMsg}${p.title}\nPrice: RM ${p.priceMYR.toFixed(2)}`);
+            btn.href = `https://wa.me/601116008366?text=${msg}`;
+            
             document.getElementById('modalOverlay').style.display = 'flex';
         }
     </script>
