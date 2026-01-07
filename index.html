@@ -3,173 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TK Select Shop / TK 精选超市</title>
+    <title>TK Global Shop</title>
+    <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; }
-        /* 隐藏调价面板 */
-        #adminPanel { display: none; background: #333; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; max-width: 500px; margin: 0 auto 20px; }
-        .input-row { display: flex; gap: 10px; margin-top: 10px; }
-        .input-group { flex: 1; font-size: 12px; }
-        input { width: 100%; padding: 8px; border-radius: 5px; border: none; }
+        body { font-family: -apple-system, sans-serif; background-color: #f8f9fa; margin: 0; padding: 15px; }
+        /* 隐藏 Google 默认的丑框 */
+        .goog-te-banner-frame.skiptranslate { display: none !important; }
+        body { top: 0px !important; }
         
-        /* 语言切换按钮样式 */
-        .lang-switch { text-align: center; margin-bottom: 20px; display: flex; justify-content: center; gap: 8px; }
-        .lang-btn { background: white; border: 1px solid #ddd; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 12px; transition: 0.3s; }
-        .lang-btn.active { background: #333; color: white; border-color: #333; }
-
-        .category-bar { display: flex; overflow-x: auto; white-space: nowrap; padding: 10px 0; margin-bottom: 20px; gap: 10px; }
-        .cat-item { padding: 8px 18px; background: white; border-radius: 20px; font-size: 14px; border: 1px solid #ddd; cursor: pointer; }
-        .cat-item.active { background: #ff4400; color: white; border-color: #ff4400; font-weight: bold; }
+        /* 翻译选择器样式 */
+        #google_translate_element { margin-bottom: 15px; text-align: center; }
         
-        .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 600px; margin: 0 auto; }
-        .product-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .flash-sale { background: linear-gradient(90deg, #ff4400, #ff8800); color: white; padding: 12px; border-radius: 12px; margin-bottom: 20px; text-align: center; }
+        .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .product-card { background: white; border-radius: 12px; overflow: hidden; position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .product-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
         .product-info { padding: 10px; }
-        .product-title { font-size: 13px; color: #333; margin-bottom: 5px; height: 36px; overflow: hidden; }
-        .myr-price { color: #ff4400; font-weight: bold; font-size: 18px; }
-
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: white; width: 90%; max-width: 400px; border-radius: 20px; overflow: hidden; }
-        .modal-body { padding: 20px; }
-        .wa-btn { display: block; background-color: #25D366; color: white; text-align: center; padding: 15px; border-radius: 10px; text-decoration: none; font-weight: bold; }
+        .myr-price { color: #ff4400; font-weight: bold; font-size: 17px; }
+        .wa-btn { display: block; background: #25D366; color: white; text-align: center; padding: 12px; border-radius: 10px; text-decoration: none; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="adminPanel">
-        <strong>🤫 Boss Mode (Real-time Price)</strong>
-        <div class="input-row">
-            <div class="input-group"><label>Rate</label><input type="number" id="exRate" value="0.65" step="0.01" oninput="updatePrices()"></div>
-            <div class="input-group"><label>Profit(RM)</label><input type="number" id="profit" value="10" oninput="updatePrices()"></div>
-        </div>
+    <div id="google_translate_element"></div>
+
+    <div class="flash-sale">
+        <div style="font-size: 12px;">🔥 限时秒杀倒计时 / Flash Sale Countdown:</div>
+        <div id="timer" style="font-weight:bold; font-size:18px;">02:45:00</div>
     </div>
 
-    <div class="lang-switch">
-        <button class="lang-btn active" onclick="setLanguage('zh', this)">中文</button>
-        <button class="lang-btn" onclick="setLanguage('en', this)">English</button>
-        <button class="lang-btn" onclick="setLanguage('ms', this)">Melayu</button>
-    </div>
-
-    <h2 id="pageTitle" style="text-align:center; color:#333; margin-top:0;">TK 精选超市</h2>
-    
-    <div class="category-bar" id="catBar"></div>
-    <div id="gallery" class="product-grid">Loading...</div>
-
-    <div class="modal-overlay" id="modalOverlay" onclick="this.style.display='none'">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <img id="modalImg" style="width:100%;">
-            <div class="modal-body">
-                <div id="modalTitle" style="font-weight:bold; margin-bottom:10px;"></div>
-                <div id="modalPrice" style="color:#ff4400; font-size:22px; font-weight:bold; margin-bottom:10px;"></div>
-                <div id="modalDesc" style="font-size:14px; color:#666; margin-bottom:20px;"></div>
-                <a href="" id="modalWaBtn" target="_blank" class="wa-btn">📲 WhatsApp Order</a>
-            </div>
-        </div>
-    </div>
+    <div id="gallery" class="product-grid">同步数据中...</div>
 
     <script>
+        // 初始化 Google 翻译
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'zh-CN',
+                includedLanguages: 'en,ms,zh-CN',
+                layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+            }, 'google_translate_element');
+        }
+
         const CSV_FILE = 'myshop.csv'; 
-        let rawData = ""; 
-        let currentProducts = [];
-        let currentLang = 'zh'; 
-
-        // 三语字典
-        const i18n = {
-            zh: { title: "TK 精选超市", all: "全部", order: "📲 WhatsApp 立即下单", loading: "加载中...", waMsg: "Hi Boss, 我要下单: " },
-            en: { title: "TK Select Shop", all: "All", order: "📲 Order via WhatsApp", loading: "Loading...", waMsg: "Hi Boss, I would like to order: " },
-            ms: { title: "TK Kedai Pilihan", all: "Semua", order: "📲 Pesan melalui WhatsApp", loading: "Memuatkan...", waMsg: "Hi Boss, saya nak order: " }
-        };
-
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('boss')) document.getElementById('adminPanel').style.display = 'block';
+        let allProducts = [];
 
         window.onload = async function() {
+            startTimer();
             try {
                 const response = await fetch(CSV_FILE);
-                rawData = await response.text();
-                updatePrices(); 
-            } catch (err) {
-                document.getElementById('gallery').innerText = "Load failed.";
-            }
+                const text = await response.text();
+                parseData(text);
+            } catch (err) { console.error("CSV Load Error"); }
         };
 
-        function setLanguage(lang, el) {
-            currentLang = lang;
-            document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
-            el.classList.add('active');
-            updateUI();
-        }
-
-        function updateUI() {
-            document.getElementById('pageTitle').innerText = i18n[currentLang].title;
-            updatePrices(); 
-        }
-
-        function updatePrices() {
-            const rate = parseFloat(document.getElementById('exRate').value) || 0.65;
-            const profit = parseFloat(document.getElementById('profit').value) || 0;
-            const lines = rawData.split(/\r?\n/);
-            currentProducts = [];
-            const categories = new Set([i18n[currentLang].all]);
-
+        function parseData(text) {
+            const lines = text.split(/\r?\n/);
+            allProducts = [];
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) continue;
                 const parts = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
                 if (parts && parts.length >= 3) {
                     const rmb = parseFloat(parts[1].replace(/"/g, "").replace(/[¥,]/g, "")) || 0;
-                    currentProducts.push({
+                    allProducts.push({
                         title: parts[0].replace(/"/g, ""),
-                        priceMYR: (rmb * rate) + profit,
+                        price: (rmb * 0.65) + 10,
                         img: parts[2].replace(/"/g, ""),
-                        cat: (parts[3] ? parts[3].replace(/"/g, "") : "Other").trim(),
-                        desc: (parts[4] ? parts[4].replace(/"/g, "") : "No details")
+                        desc: (parts[4] ? parts[4].replace(/"/g, "") : "")
                     });
-                    categories.add((parts[3] ? parts[3].replace(/"/g, "") : "Other").trim());
                 }
             }
-            renderCats(Array.from(categories));
-            renderProducts(currentProducts);
+            render();
         }
 
-        function renderCats(cats) {
-            const bar = document.getElementById('catBar');
-            bar.innerHTML = cats.map(c => `<div class="cat-item ${c===i18n[currentLang].all?'active':''}" onclick="filterData('${c}', this)">${c}</div>`).join('');
-        }
-
-        function filterData(cat, el) {
-            document.querySelectorAll('.cat-item').forEach(i => i.classList.remove('active'));
-            el.classList.add('active');
-            const filtered = (cat === i18n[currentLang].all) ? currentProducts : currentProducts.filter(p => p.cat === cat);
-            renderProducts(filtered);
-        }
-
-        function renderProducts(list) {
+        function render() {
             const gallery = document.getElementById('gallery');
-            gallery.innerHTML = list.map((p) => `
-                <div class="product-card" onclick="showPop(${currentProducts.indexOf(p)})">
+            gallery.innerHTML = allProducts.map((p, idx) => `
+                <div class="product-card">
                     <img src="${p.img}" class="product-img">
                     <div class="product-info">
-                        <div class="product-title">${p.title}</div>
-                        <span class="myr-price">RM ${p.priceMYR.toFixed(2)}</span>
+                        <div style="font-size:13px; height:36px; overflow:hidden;">${p.title}</div>
+                        <div class="myr-price">RM ${p.price.toFixed(2)}</div>
+                        <div style="font-size:11px; color:#999; margin:5px 0;">${p.desc}</div>
+                        <a href="https://wa.me/601116008366?text=Order:${encodeURIComponent(p.title)}" class="wa-btn">WhatsApp 下单</a>
                     </div>
                 </div>
             `).join('');
         }
 
-        function showPop(idx) {
-            const p = currentProducts[idx];
-            document.getElementById('modalImg').src = p.img;
-            document.getElementById('modalTitle').innerText = p.title;
-            document.getElementById('modalPrice').innerText = `RM ${p.priceMYR.toFixed(2)}`;
-            document.getElementById('modalDesc').innerText = p.desc;
-            
-            const btn = document.getElementById('modalWaBtn');
-            btn.innerText = i18n[currentLang].order;
-            const msg = encodeURIComponent(`${i18n[currentLang].waMsg}${p.title}\nPrice: RM ${p.priceMYR.toFixed(2)}`);
-            btn.href = `https://wa.me/601116008366?text=${msg}`;
-            
-            document.getElementById('modalOverlay').style.display = 'flex';
+        function startTimer() {
+            let h=2, m=45, s=0;
+            setInterval(() => {
+                if(--s<0){s=59; if(--m<0){m=59; h--;}}
+                document.getElementById('timer').innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            }, 1000);
         }
     </script>
 </body>
