@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的精品选品店</title>
+    <style>
+        /* 保持之前的样式不变 */
+        body { font-family: -apple-system, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; }
+        .category-bar { display: flex; overflow-x: auto; white-space: nowrap; padding: 10px 0; margin-bottom: 20px; gap: 10px; }
+        .cat-item { padding: 8px 18px; background: white; border-radius: 20px; font-size: 14px; border: 1px solid #ddd; cursor: pointer; }
+        .cat-item.active { background: #ff4400; color: white; border-color: #ff4400; font-weight: bold; }
+        .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 600px; margin: 0 auto; }
+        .product-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; }
+        .product-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
+        .product-info { padding: 10px; }
+        .product-title { font-size: 13px; color: #333; margin-bottom: 5px; height: 36px; overflow: hidden; }
+        .myr-price { color: #ff4400; font-weight: bold; font-size: 18px; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 90%; max-width: 400px; border-radius: 20px; overflow: hidden; }
+        .modal-body { padding: 20px; }
+        .wa-btn { display: block; background-color: #25D366; color: white; text-align: center; padding: 15px; border-radius: 10px; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2 style="text-align:center; color:#333;">✨ 我的精品超市</h2>
+    <div class="category-bar" id="catBar"></div>
+    <div id="gallery" class="product-grid">正在加载商品数据...</div>
+
+    <div class="modal-overlay" id="modalOverlay" onclick="this.style.display='none'">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <img id="modalImg" style="width:100%;">
+            <div class="modal-body">
+                <div id="modalTitle" style="font-weight:bold; margin-bottom:10px;"></div>
+                <div id="modalPrice" style="color:#ff4400; font-size:22px; font-weight:bold; margin-bottom:10px;"></div>
+                <div id="modalDesc" style="font-size:14px; color:#666; margin-bottom:20px;"></div>
+                <a href="" id="modalWaBtn" target="_blank" class="wa-btn">📲 WhatsApp 立即下单</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 💡 这里的名字必须和你上传到 GitHub 的 CSV 文件名一模一样！
+        const CSV_FILE = 'myshop.csv'; 
+        let allProducts = [];
+
+        // 🚀 网页加载时自动运行
+        window.onload = async function() {
+            try {
+                const response = await fetch(CSV_FILE);
+                const text = await response.text();
+                parseAndShow(text);
+            } catch (err) {
+                document.getElementById('gallery').innerText = "加载失败，请确认 CSV 文件已上传到 GitHub。";
+            }
+        };
+
+        function parseAndShow(text) {
+            const lines = text.split(/\r?\n/);
+            allProducts = [];
+            const categories = new Set(["全部"]);
+
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                const parts = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                if (parts && parts.length >= 3) {
+                    const price = parseFloat(parts[1].replace(/"/g, "").replace(/[¥,]/g, "")) || 0;
+                    const product = {
+                        title: parts[0].replace(/"/g, ""),
+                        priceMYR: (price * 0.65) + 10, // 这里可以修改你的默认加价逻辑
+                        img: parts[2].replace(/"/g, ""),
+                        cat: (parts[3] ? parts[3].replace(/"/g, "") : "其他").trim(),
+                        desc: (parts[4] ? parts[4].replace(/"/g, "") : "暂无详情")
+                    };
+                    allProducts.push(product);
+                    categories.add(product.cat);
+                }
+            }
+            renderCats(Array.from(categories));
+            renderProducts(allProducts);
+        }
+
+        function renderCats(cats) {
+            const bar = document.getElementById('catBar');
+            bar.innerHTML = cats.map(c => `<div class="cat-item ${c==='全部'?'active':''}" onclick="filterData('${c}', this)">${c}</div>`).join('');
+        }
+
+        function filterData(cat, el) {
+            document.querySelectorAll('.cat-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            renderProducts(cat === '全部' ? allProducts : allProducts.filter(p => p.cat === cat));
+        }
+
+        function renderProducts(list) {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = list.map((p, idx) => `
+                <div class="product-card" onclick="showPop(${allProducts.indexOf(p)})">
+                    <img src="${p.img}" class="product-img">
+                    <div class="product-info">
+                        <div class="product-title">${p.title}</div>
+                        <span class="myr-price">RM ${p.priceMYR.toFixed(2)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showPop(idx) {
+            const p = allProducts[idx];
+            document.getElementById('modalImg').src = p.img;
+            document.getElementById('modalTitle').innerText = p.title;
+            document.getElementById('modalPrice').innerText = `RM ${p.priceMYR.toFixed(2)}`;
+            document.getElementById('modalDesc').innerText = p.desc;
+            const msg = encodeURIComponent(`Hi Boss, 我要下单: ${p.title}\n价格: RM ${p.priceMYR.toFixed(2)}`);
+            document.getElementById('modalWaBtn').href = `https://wa.me/601116008366?text=${msg}`;
+            document.getElementById('modalOverlay').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
