@@ -3,78 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TK Global Select</title>
+    <title>TK Global Select | Premium Shop</title>
     <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background-color: #f8f9fa; margin: 0; padding: 15px; }
+        :root { --primary: #ff4400; --bg: #f7f8fa; --card: #ffffff; --text: #333333; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg); margin: 0; padding: 0; color: var(--text); padding-bottom: 50px; }
+        
+        /* 隐藏 Google 默认横条 */
         .goog-te-banner-frame.skiptranslate { display: none !important; }
         body { top: 0px !important; }
-        
-        /* 翻译选择器样式 */
-        #google_translate_element { margin-bottom: 15px; text-align: center; }
-        
-        /* 店主暗号面板样式 */
-        #adminPanel { display: none; background: #222; color: #fbff00; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 13px; }
+
+        /* 顶部导航与翻译 */
+        .header { background: #fff; padding: 15px; display: flex; flex-direction: column; align-items: center; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 100; }
+        #google_translate_element { margin-top: 10px; }
+
+        /* 顶部海报展示区 (Banner) */
+        .banner { width: 92%; margin: 15px auto; height: 160px; border-radius: 15px; background: linear-gradient(135deg, #222, #444); display: flex; align-items: center; justify-content: center; color: white; position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .banner::after { content: "TK PREMIUM SELECT"; font-size: 24px; font-weight: 800; letter-spacing: 2px; opacity: 0.2; }
+        .banner-text { position: absolute; left: 20px; text-align: left; }
+        .banner-text h1 { margin: 0; font-size: 20px; }
+        .banner-text p { margin: 5px 0 0; font-size: 12px; opacity: 0.8; }
+
+        /* 调价面板 */
+        #adminPanel { display: none; background: #222; color: #fbff00; padding: 15px; width: 92%; margin: 0 auto 15px; border-radius: 12px; box-sizing: border-box; }
         .input-row { display: flex; gap: 10px; margin-top: 10px; }
-        input { width: 100%; padding: 8px; border-radius: 5px; border: none; }
+        input { width: 100%; padding: 8px; border-radius: 6px; border: none; font-size: 13px; }
 
-        /* 秒杀条 */
-        .flash-sale { background: linear-gradient(90deg, #ff4400, #ff8800); color: white; padding: 12px; border-radius: 12px; margin-bottom: 20px; text-align: center; box-shadow: 0 4px 10px rgba(255,68,0,0.2); }
-        
-        /* 分类栏样式 */
-        .category-bar { display: flex; overflow-x: auto; white-space: nowrap; padding: 5px 0; margin-bottom: 15px; gap: 8px; }
-        .cat-item { padding: 6px 16px; background: white; border-radius: 18px; font-size: 13px; border: 1px solid #eee; cursor: pointer; }
-        .cat-item.active { background: #ff4400; color: white; border-color: #ff4400; font-weight: bold; }
+        /* 秒杀条与分类栏 */
+        .flash-sale { width: 92%; margin: 0 auto 15px; background: #ff4400; color: white; padding: 10px; border-radius: 10px; text-align: center; font-weight: bold; font-size: 14px; }
+        .category-bar { display: flex; overflow-x: auto; padding: 10px 4%; gap: 10px; scrollbar-width: none; }
+        .category-bar::-webkit-scrollbar { display: none; }
+        .cat-item { padding: 8px 20px; background: white; border-radius: 20px; font-size: 13px; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.03); cursor: pointer; transition: 0.3s; border: 1px solid #eee; }
+        .cat-item.active { background: var(--primary); color: white; border-color: var(--primary); transform: scale(1.05); }
 
-        /* 商品布局 */
-        .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-        .product-card { background: white; border-radius: 12px; overflow: hidden; position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .badge { position: absolute; top: 8px; left: 8px; background: rgba(255, 217, 0, 0.9); color: #856404; padding: 2px 6px; border-radius: 5px; font-size: 10px; font-weight: bold; z-index: 5; }
+        /* 商品网格与卡片 */
+        .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 0 4%; max-width: 800px; margin: 0 auto; }
+        .product-card { background: var(--card); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); position: relative; transition: transform 0.2s; }
+        .product-card:active { transform: scale(0.98); }
         .product-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
-        .product-info { padding: 10px; }
-        .myr-price { color: #ff4400; font-weight: bold; font-size: 17px; margin: 5px 0; }
-        .wa-btn { display: block; background: #25D366; color: white; text-align: center; padding: 10px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px; }
+        .product-info { padding: 12px; }
+        .product-title { font-size: 13px; font-weight: 500; height: 38px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 8px; }
+        .price-row { display: flex; justify-content: space-between; align-items: center; }
+        .myr-price { color: var(--primary); font-weight: 700; font-size: 18px; }
+        
+        /* 下单按钮 */
+        .wa-btn { background: #25D366; color: white; text-decoration: none; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+
+        /* 徽章 */
+        .badge { position: absolute; top: 10px; left: 10px; background: rgba(255, 68, 0, 0.9); color: white; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; z-index: 2; }
     </style>
 </head>
 <body>
 
-    <div id="adminPanel">
-        <strong>🤫 Boss Mode (Real-time Price Control)</strong>
-        <div class="input-row">
-            <div class="input-group"><label>Rate</label><input type="number" id="exRate" value="0.65" step="0.01" oninput="updatePrices()"></div>
-            <div class="input-group"><label>Profit(RM)</label><input type="number" id="profit" value="10" oninput="updatePrices()"></div>
+    <div class="header">
+        <div style="font-weight: 800; font-size: 18px; letter-spacing: 1px;">TK GLOBAL SELECT</div>
+        <div id="google_translate_element"></div>
+    </div>
+
+    <div class="banner">
+        <div class="banner-text">
+            <h1>Premium Quality</h1>
+            <p>Directly from top-tier suppliers</p>
+            <div style="margin-top:10px; font-size:10px; background:rgba(255,255,255,0.2); padding:4px 8px; border-radius:5px; display:inline-block;">FREE SHIPPING OVER RM150</div>
         </div>
     </div>
 
-    <div id="google_translate_element"></div>
-
-    <div class="flash-sale">
-        <div style="font-size: 12px; margin-bottom:3px;">🔥 限时秒杀倒计时 / FLASH SALE:</div>
-        <div id="timer" style="font-weight:bold; font-size:18px;">02:45:00</div>
+    <div id="adminPanel">
+        <strong>🤫 Boss Control</strong>
+        <div class="input-row">
+            <input type="number" id="exRate" value="0.65" step="0.01" oninput="updatePrices()" placeholder="Rate">
+            <input type="number" id="profit" value="10" oninput="updatePrices()" placeholder="Profit RM">
+        </div>
     </div>
 
-    <div class="category-bar" id="catBar"></div>
+    <div class="flash-sale">🔥 <span id="timer">02:45:00</span> FLASH SALE ENDS</div>
 
-    <div id="gallery" class="product-grid">同步数据中...</div>
+    <div class="category-bar" id="catBar"></div>
+    <div id="gallery" class="product-grid">同步货架中...</div>
 
     <script>
-        // Google 翻译初始化
         function googleTranslateElementInit() {
-            new google.translate.TranslateElement({
-                pageLanguage: 'zh-CN',
-                includedLanguages: 'en,ms,zh-CN',
-                layout: google.translate.TranslateElement.InlineLayout.SIMPLE
-            }, 'google_translate_element');
+            new google.translate.TranslateElement({pageLanguage: 'zh-CN', includedLanguages: 'en,ms,zh-CN', layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, 'google_translate_element');
         }
 
         const CSV_FILE = 'myshop.csv'; 
         let rawData = ""; 
         let currentProducts = [];
 
-        // 检查暗号
-        if (new URLSearchParams(window.location.search).has('boss')) {
-            document.getElementById('adminPanel').style.display = 'block';
-        }
+        if (new URLSearchParams(window.location.search).has('boss')) document.getElementById('adminPanel').style.display = 'block';
 
         window.onload = async function() {
             startTimer();
@@ -82,7 +98,7 @@
                 const response = await fetch(CSV_FILE);
                 rawData = await response.text();
                 updatePrices(); 
-            } catch (err) { document.getElementById('gallery').innerText = "Gagal memuatkan data."; }
+            } catch (err) { console.error("Data fail"); }
         };
 
         function updatePrices() {
@@ -90,7 +106,7 @@
             const profit = parseFloat(document.getElementById('profit').value) || 0;
             const lines = rawData.split(/\r?\n/);
             currentProducts = [];
-            const categories = new Set(["全部"]);
+            const categories = new Set(["全部 / ALL"]);
 
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i].trim();
@@ -102,10 +118,10 @@
                         title: parts[0].replace(/"/g, ""),
                         price: (rmb * rate) + profit,
                         img: parts[2].replace(/"/g, ""),
-                        cat: (parts[3] ? parts[3].replace(/"/g, "") : "其他").trim(),
+                        cat: (parts[3] ? parts[3].replace(/"/g, "") : "Other").trim(),
                         desc: (parts[4] ? parts[4].replace(/"/g, "") : "")
                     });
-                    categories.add((parts[3] ? parts[3].replace(/"/g, "") : "其他").trim());
+                    categories.add((parts[3] ? parts[3].replace(/"/g, "") : "Other").trim());
                 }
             }
             renderCats(Array.from(categories));
@@ -114,13 +130,13 @@
 
         function renderCats(cats) {
             const bar = document.getElementById('catBar');
-            bar.innerHTML = cats.map(c => `<div class="cat-item ${c==='全部'?'active':''}" onclick="filterData('${c}', this)">${c}</div>`).join('');
+            bar.innerHTML = cats.map(c => `<div class="cat-item ${c==='全部 / ALL'?'active':''}" onclick="filterData('${c}', this)">${c}</div>`).join('');
         }
 
         function filterData(cat, el) {
             document.querySelectorAll('.cat-item').forEach(i => i.classList.remove('active'));
             el.classList.add('active');
-            const filtered = cat === '全部' ? currentProducts : currentProducts.filter(p => p.cat === cat);
+            const filtered = (cat === '全部 / ALL') ? currentProducts : currentProducts.filter(p => p.cat === cat);
             render(filtered);
         }
 
@@ -128,13 +144,14 @@
             const gallery = document.getElementById('gallery');
             gallery.innerHTML = list.map((p, idx) => `
                 <div class="product-card">
-                    ${idx < 2 ? `<div class="badge">TOP ${idx+1}</div>` : ''}
+                    ${idx < 2 ? `<div class="badge">HOT</div>` : ''}
                     <img src="${p.img}" class="product-img">
                     <div class="product-info">
-                        <div style="font-size:13px; height:36px; overflow:hidden; line-height:1.4;">${p.title}</div>
-                        <div class="myr-price">RM ${p.price.toFixed(2)}</div>
-                        <div style="font-size:11px; color:#888; margin-bottom:8px; height:15px; overflow:hidden;">${p.desc}</div>
-                        <a href="https://wa.me/601116008366?text=Order:${encodeURIComponent(p.title)}" class="wa-btn">WhatsApp 下单</a>
+                        <div class="product-title">${p.title}</div>
+                        <div class="price-row">
+                            <span class="myr-price">RM ${p.price.toFixed(2)}</span>
+                            <a href="https://wa.me/601116008366?text=Order:${encodeURIComponent(p.title)}" class="wa-btn">BUY</a>
+                        </div>
                     </div>
                 </div>
             `).join('');
